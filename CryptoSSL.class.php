@@ -10,12 +10,18 @@
 
  class CryptoSSL
 {               
-    const RAW   = 1;
-    const BASE64= 2;
-    const HEX   = 3;
+    const RAW   = 5;
+    const BASE64= 6;
+    const HEX   = 7;
     
     private $PublicKey;
     private $PrivateKey;
+    
+    //Holds the result from last encryption operation
+    public $Encrypted;
+    
+    //Holds the result from the last decryption operation
+    public $Decrypted;
     
     public function __construct($PublicKey = null, $PrivateKey = null)
     {
@@ -34,15 +40,60 @@
     public function setPrivateKey($PrivateKey)
     {
         if (is_file($PrivateKey)) $PrivateKey = file_get_contents($PrivateKey);
-        $this->PrivateKey = openssl_pkey_get_public($PrivateKey);
+        $this->PrivateKey = openssl_pkey_get_private($PrivateKey);
         if ($this->PrivateKey === false)
             throw new exception('Can not load the private key.');
     }
     
-    public function encryptPublic($Data)
+    public function publicEncrypt($Data, $EncodeType=self::BASE64)
     {
-        
+        openssl_public_encrypt ($Data , $this->Encrypted ,$this->PublicKey);
+        $this->postEncode($this->Encrypted , $EncodeType);
+        return $this->Encrypted;
     }
+    
+    public function privateEncrypt($Data, $EncodeType=self::BASE64)
+    {
+        openssl_private_encrypt ($Data , $this->Encrypted ,$this->PrivateKey);
+        $this->postEncode($this->Encrypted , $EncodeType);
+        return $this->Encrypted;
+    }
+
+    public function publicDecrypt($Data, $EncodeType=self::BASE64)
+    {
+        $this->preDecode($Data , $EncodeType);
+        openssl_private_decrypt ($Data, $this->Decrypted ,$this->PrivateKey);
+        return $this->Decrypted;
+    }
+    
+    public function privateDecrypt($Data, $EncodeType=self::BASE64)
+    {
+        $this->preDecode($Data , $EncodeType);
+        openssl_private_decrypt ($Data, $this->Decrypted ,$this->PrivateKey);
+        return $this->Decrypted;
+    }
+    
+    private function postEncode(&$Data, $EncodeType)
+    {
+        if ($EncodeType === self::BASE64)
+            $Data = base64_encode($this->Encrypted);
+        else if ($EncodeType === self::HEX)
+            $Data = bin2hex($this->Encrypted);
+    }
+    
+    private function preDecode(&$Data, $EncodeType)
+    {
+        if ($EncodeType === self::BASE64)
+            $Data = base64_decode($this->Encrypted);
+        else if ($EncodeType === self::HEX)
+            $Data = hex2bin($this->Encrypted);
+    }
+    
+    
 }
 
-$c = new CryptoSSL(null, 'key.pem');
+$c = new CryptoSSL('public.pem', 'private.pem');
+$What = 'My secret key';
+$c->publicEncrypt($What);
+echo $c->privateDecrypt($c->Encrypted);
+
