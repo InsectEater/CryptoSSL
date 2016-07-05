@@ -152,6 +152,33 @@ namespace InsectEater;
         openssl_private_decrypt ($Data, $this->Decrypted ,$this->PrivateKey);
         return $this->Decrypted;
     }
+
+/*
+ * Encrypts $Data with randomly generated secret key. Then encrypts the key with the
+ * public key. The encrypted secret key is storedin the $SealingKey class property.
+ * The result of the $Data encryption is stored in the $Encrypted class property.
+ *
+ * @param String $Data Data to be encrypted.
+ * @param Constant $EncodeType What encoding was applied on the encrypted data.
+ * can be: self::RAW - the data will be not changed before decryption;
+ *         self::BASE64 (default) - The data will be base64 decoded before decryption;
+ *         self::HEX - The data is considered hex encoded and will be converted
+ * @param String What cypher method to use to encode the Data. Only modes which do not
+ * require initialization vectors are supported (openssl_seal function limitation).
+ * Default is to RC4.
+ */
+
+    public function seal($Data, $EncodeType = self::BASE64, $Method = 'RC4')
+    {
+        $AvailableMethods = openssl_get_cipher_methods(true);
+        if (!in_array($Method, $AvailableMethods)) $Method = null;
+        openssl_seal($Data, $this->Encrypted, $Key, array($this->PublicKey), $Method);
+        $this->SealingKey = $Key[0];
+        $this->postEncode($this->SealingKey , $EncodeType);
+        $this->postEncode($this->Encrypted , $EncodeType);
+    }
+ 
+    
 /**
  * Internal function to encode Data which was previosly decrypted.
  *
