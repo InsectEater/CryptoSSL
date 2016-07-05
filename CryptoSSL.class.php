@@ -9,8 +9,7 @@ namespace InsectEater;
  */
 
  class CryptoSSL
-{      
-
+{
     const RAW   = 5;
     const BASE64= 6;
     const HEX   = 7;
@@ -177,11 +176,5 @@ namespace InsectEater;
         else if ($EncodeType === self::HEX)
             $Data = hex2bin($this->Encrypted);
     }
-        
+
 }
-
-$c = new CryptoSSL('public.pem', 'private.pem');
-$What = 'My secret key';
-$c->publicEncrypt($What);
-echo $c->privateDecrypt($c->Encrypted);
-
