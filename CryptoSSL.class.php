@@ -20,7 +20,7 @@ namespace InsectEater;
     public $Encrypted;
     
 /**
- * var String Holds the result from last encryption operation.
+ * var String Holds the result from last decryption operation.
  */
     public $Decrypted;
 
@@ -36,9 +36,9 @@ namespace InsectEater;
 /**
  * Class constructor
  *
- * @param string Public key to be used. Can be a path to the file containing it,
+ * @param string $PublicKey Public key to be used. Can be a path to the file containing it,
  * or the key itself (pem format encoded).
- * @param string Private key to be used. Can be a path to the file containing it,
+ * @param string $PrivateKey Private key to be used. Can be a path to the file containing it,
  * or the key itself (pem format encoded).
  *
  * return void
