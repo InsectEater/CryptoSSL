@@ -5,15 +5,12 @@ namespace InsectEater;
  *
  * You can also encrypt or decrypt (seal or open) long texts using private and public keys. In this
  * scenario symmetric encyption with random generated key is used, and then the key itself
- * is SSL encrypted..
+ * is SSL encrypted.
+ * @version 1.0
  */
 
 class CryptoSSL
 {
-    const RAW   = 5;
-    const BASE64= 6;
-    const HEX   = 7;
-
 /**
  * var String Holds the result from last encryption operation.
  */
@@ -37,7 +34,11 @@ class CryptoSSL
  * var Resource Holds the loaded private key, used for crypting operations by the class.
  */
     private $PrivateKey;
-    
+/**
+ * var String What encoding type to use for raw encrypted data.
+ */
+    private $EncodeType = 'BASE64';
+
 /**
  * Class constructor
  *
@@ -86,137 +87,196 @@ class CryptoSSL
     }
 
     /**
- * Encrypts $Data with public key and encodes the result according to $EncodeType.
+ * Encrypts $Data with public key and returns the (encoded) result.
  * The result is saved in class $Encrypted property and returned.
  *
  * @param String $Data Data to be encrypted.
- * @param Constant $EncodeType What encoding to be applied on the encrypted data
- * can be: self::RAW - no change on the result;
- *         self::BASE64 (default) - Result will be base64 encoded;
- *         self::HEX - Result is converted to hexadeciaml representation of each byte.
+ *
  * @return String The result of the encryption.
  */
-    public function publicEncrypt($Data, $EncodeType=self::BASE64)
+    public function publicEncrypt($Data)
     {
         if (empty($this->PublicKey))
             throw new \exception('Missing public key.');
         openssl_public_encrypt ($Data , $this->Encrypted ,$this->PublicKey);
-        $this->postEncode($this->Encrypted , $EncodeType);
+        $this->postEncode($this->Encrypted);
         return $this->Encrypted;
     }
 
 /**
- * Encrypts $Data with private key and encodes the result according to $EncodeType.
+ * Encrypts $Data with private key and returns the (encoded) result.
  * The result is saved in class $Encrypted property and returned.
  *
  * @param String $Data Data to be encrypted.
- * @param Constant $EncodeType What encoding to apply on the encrypted data
- * can be: self::RAW - no change on the result;
- *         self::BASE64 (default) - Result will be base64 encoded;
- *         self::HEX - Result is converted to hexadeciaml representation of each byte.
+ *
  * @return String The result of the encryption.
  */
-    public function privateEncrypt($Data, $EncodeType=self::BASE64)
+    public function privateEncrypt($Data)
     {
         if (empty($this->PrivateKey))
             throw new \exception('Missing private key.');
         openssl_private_encrypt ($Data , $this->Encrypted ,$this->PrivateKey);
-        $this->postEncode($this->Encrypted , $EncodeType);
+        $this->postEncode($this->Encrypted);
         return $this->Encrypted;
     }
 /**
- * Decrypts $Data with public key, which was previously encoded using $EncodeType.
- * The result is saved in class $Decrypted property and returned.
+ * Decrypts $Data with public key. The result is saved in class $Decrypted property
+ * and returned.
  *
  * @param String $Data Data to be decrypted.
- * @param Constant $EncodeType What encoding was applied on the encrypted data.
- * can be: self::RAW - the data will be not changed before decryption;
- *         self::BASE64 (default) - The data will be base64 decoded before decryption;
- *         self::HEX - The data is considered hex encoded and will be converted
- * to binary, before decryption.
+ *
  * @return String The result of the decryption.
  */
-    public function publicDecrypt($Data, $EncodeType=self::BASE64)
+    public function publicDecrypt($Data)
     {
         if (empty($this->PublicKey))
             throw new \exception('Missing public key.');
-        $this->preDecode($Data , $EncodeType);
+        $this->preDecode($Data);
         openssl_private_decrypt ($Data, $this->Decrypted ,$this->PublicKey);
         return $this->Decrypted;
     }
 
 /**
- * Decrypts $Data with private key, which was previously encoded using $EncodeType.
- * The result is saved in class $Decrypted property and returned.
+ * Decrypts $Data with private key. The result is saved in class $Decrypted
+ * property and returned.
  *
  * @param String $Data Data to be decrypted.
- * @param Constant $EncodeType What encoding was applied on the encrypted data.
- * can be: self::RAW - the data will be not changed before decryption;
- *         self::BASE64 (default) - The data will be base64 decoded before decryption;
- *         self::HEX - The data is considered hex encoded and will be converted
- * to binary, before decryption.
+ *
  * @return String The result of the decryption.
  */
-    public function privateDecrypt($Data, $EncodeType=self::BASE64)
+    public function privateDecrypt($Data)
     {
         if (empty($this->PrivateKey))
             throw new \exception('Missing private key.');
-        $this->preDecode($Data , $EncodeType);
+        $this->preDecode($Data);
         openssl_private_decrypt ($Data, $this->Decrypted ,$this->PrivateKey);
         return $this->Decrypted;
     }
 
 /**
- * Encrypts $Data with randomly generated key. Then encrypts the key with the
- * public key. The encrypted secret key is storedin the $SealingKey class property.
- * The result of the $Data encryption is stored in the $Encrypted class property.
+ * Encrypts $PlainData with randomly generated sealing key.
+ * The sealing key is crypted with public key and stored in  the $SealingKey
+ * class property. The result of the $Data encryption is stored in the
+ * $Encrypted class property. This is wrapper of openssl_seal function;
  *
- * @param String $Data Data to be encrypted.
- * @param Constant $EncodeType What encoding to apply on the encrypted data.
- * can be: self::RAW - no change on the result;
- *         self::BASE64 (default) - Result will be base64 encoded;
- *         self::HEX - Result is converted to hexadeciaml representation of each byte.
- * @param String $Method What cypher method to use to encode the Data. Only modes which do not
- * require initialization vectors are supported (openssl_seal function limitation).
- * Default is to RC4, but you can use for example AES-256-ECB.
+ * @param String $PlainData Data to be encrypted.
+ * @param String $Method What cypher method to use to crypt the$PlainData. Only modes
+ * which do not require initialization vectors are supported (openssl_seal 
+ * function limitation).
+ * Default is to RC4, but you can use for example AES-256-ECB (both are unsecure.
+ *
  * @return $String Encrypted data.
  */
-    public function seal($Data, $EncodeType = null, $Method = 'RC4')
+    public function seal($PlainData, $Method = 'RC4')
     {
         if (empty($this->PublicKey))
             throw new \exception('Missing public key.');
-        if (empty($EncodeType)) $EncodeType = self::BASE64;
         $AvailableMethods = openssl_get_cipher_methods(true);
         if (!in_array($Method, $AvailableMethods)) $Method = 'RC4';
-        openssl_seal($Data, $this->Encrypted, $Key, array($this->PublicKey), $Method);
+        openssl_seal($PlainData, $this->Encrypted, $Key, array($this->PublicKey), $Method);
         $this->SealingKey = $Key[0];
-        $this->postEncode($this->SealingKey , $EncodeType);
-        $this->postEncode($this->Encrypted , $EncodeType);
+        $this->postEncode($this->SealingKey);
+        $this->postEncode($this->Encrypted);
+        return $this->Encrypted;
     }
 /**
- * Decrypts $Data supplied secret key and private key. The result from decryption is 
- * stored in $this->Decrypted property and returned.
+ * Decrypts $CryptedData with private key.
+ * The result from decryption is stored in $this->Decrypted property and returned.
  * 
- * @param String $Data Data to be decrypted.
- * @param String SealingKe The key to be used on the encrypted $Data.
- * @param Constant $EncodeType What encoding was applied on the encrypted data.
- * can be: self::RAW - the data will be not changed before decryption;
- *         self::BASE64 (default) - The data will be base64 decoded before decryption;
- *         self::HEX - The data is considered hex encoded and will be converted;
+ * @param String $CryptedData Data to be decrypted.
+ * @param String $SealingKey The key to be used on the encrypted $Data.
  * @param String $Method What cypher method to use to encode the Data. Only modes which do not
  * require initialization vectors are supported (openssl_seal function limitation).
- * Default is to RC4, but you can use for example AES-256-ECB.
+ * Default is to RC4, but you can use for example AES-256-ECB (both are unsecure).
+ *
  * return String Decrypted data.
  */
-    public function open($Data, $SealingKey, $EncodeType = null, $Method = 'RC4') {
+    public function open($CryptedData, $SealingKey, $Method = 'RC4') {
         if (empty($this->PrivateKey))
             throw new \exception('Missing private key.');
-        if (empty($EncodeType)) $EncodeType = self::BASE64;
-        $this->preDecode($SealingKey, $EncodeType);
-        $this->preDecode($Data, $EncodeType);
-        openssl_open($Data, $this->Decrypted, $SealingKey, $this->PrivateKey, $Method);
+        $this->preDecode($SealingKey);
+        $this->preDecode($CryptedData);
+        openssl_open($CryptedData, $this->Decrypted, $SealingKey, $this->PrivateKey, $Method);
         return $this->Decrypted;
     }
+
+/**
+ * Encrypts $PlainData with randomly generated sealing key.
+ * The sealing key is crypted with public key and stored in  the $SealingKey
+ * class property. The result of the $Data encryption is stored in the
+ * $Encrypted class property. Here is used more secure mcrypt_encrypt function
+ * with ciphers put in cfb mode. The initialization vector is applied
+ * at the beginig of the encrypted data.
+ *
+ * @param String $PlainData Data to be encrypted.
+ * @param String $Method What cypher method to use to encode the $PlainData. Must be
+ * some of the MCRYPT_ciphername, supported by mcrypt, which can be put in cfb mode.
+ * Default is to MCRYPT_RIJNDAEL_256 (Other name of AES-256).
+ *
+ * @return $String Encrypted data.
+ */
+    public function mcryptSeal($PlainData, $Method = MCRYPT_RIJNDAEL_256)
+    {
+        if (empty($this->PublicKey))
+            throw new \exception('Missing public key.');
+        $Mc =mcrypt_module_open ($Method, null, 'cfb', null);
+        $IvSize = mcrypt_enc_get_iv_size($Mc);
+        $Iv = openssl_random_pseudo_bytes($IvSize);
+        $KeySize = mcrypt_enc_get_key_size($Mc);
+        mcrypt_module_close($Mc);
+        $this->SealingKey = openssl_random_pseudo_bytes($KeySize);
+        $this->Encrypted = $Iv.mcrypt_encrypt ($Method, $this->SealingKey , $PlainData , 'cfb', $Iv);
+        $this->postEncode($this->SealingKey);
+        $this->postEncode($this->Encrypted);
+        return $this->Encrypted;
+    }
+/**
+ * Decrypts $CryptedData with private key.
+ * The result from decryption is stored in $this->Decrypted property and returned.
+ * 
+ * @param String $CryptedData Data to be decrypted.
+ * @param String $SealingKey The key to be used on the encrypted $Data.
+ * @param String $Method What cypher method to use to decode the $EncryptedData. Must be
+ * some of the MCRYPT_ciphername, supported by mcrypt, which can be put in cfb mode.
+ * Default is to MCRYPT_RIJNDAEL_256 (Other name of AES-256).
+ *
+ * return String Decrypted data.
+ */
+    public function mcryptOpen($EncryptedData, $Key, $Method = MCRYPT_RIJNDAEL_256)
+    {
+        if (empty($this->PrivateKey))
+            throw new \exception('Missing private key.');
+        $Mc =mcrypt_module_open ($Method, null, 'cfb', null);
+        $IvSize = mcrypt_enc_get_iv_size($Mc);
+        mcrypt_module_close($Mc);
+        $this->preDecode($EncryptedData);
+        $this->preDecode($Key);
+        $Iv = substr($EncryptedData, 0, $IvSize);
+        $EncryptedData = substr($EncryptedData, $IvSize);
+        $this->Decrypted = mcrypt_decrypt ($Method, $Key , $EncryptedData , 'cfb', $Iv);
+        return $this->Decrypted;
+    }
+
+/**
+ * Set the encoding type to be used when working with raw encrytped data when  return it
+ * or before use it for decryption (this is valid for symmetric keys and data).
+ * 
+ * @param String $EncodeType Can be one of the following:
+ *         self::RAW - the data is not changed;
+ *         self::BASE64 (default);
+ *         self::HEX - Hex representation of data bytes;
+ *
+ * @return void
+ */
+
+public function setEncoding($EncodeType)
+    {   
+        $EncodeType = strtoupper($EncodeType);
+        if ( !in_array($EncodeType , array('BASE64', 'RAW', 'HEX')) )
+            $EncodeType = 'BASE64';
+        $this->EncodeType = $EncodeType;
+    }
+
 /**
  * Clear sensitive data from class variables.
  * 
@@ -237,28 +297,30 @@ class CryptoSSL
         }
     }
 
+
+    
 /**
- * Internal function to encode Data which was previosly decrypted.
+ * Encode Data after encryption
  *
  * return void
  */
-    private function postEncode(&$Data, $EncodeType)
+    private function postEncode(&$Data)
     {
-        if ($EncodeType === self::BASE64)
-            $Data = base64_encode($Data);
-        else if ($EncodeType === self::HEX)
-            $Data = bin2hex($Data);
+        switch ($this->EncodeType) {
+            case 'BASE64': $Data = base64_encode($Data); break;
+            case 'HEX': $Data = bin2hex($Data); break;
+        }
     }
 /**
- * Internal function to decode Data before decrypt it
+ * Decode Data before encryption
  *
  * return void
  */
-    private function preDecode(&$Data, $EncodeType)
+    private function preDecode(&$Data)
     {
-        if ($EncodeType === self::BASE64)
-            $Data = base64_decode($Data);
-        else if ($EncodeType === self::HEX)
-            $Data = hex2bin($Data);
+        switch ($this->EncodeType) {
+            case 'BASE64': $Data = base64_decode($Data); break;
+            case 'HEX': $Data = hex2bin($Data); break;
+        }
     }
 }
