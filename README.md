@@ -14,12 +14,12 @@ Current capabilities of CryptoSSL
 * Use public and private keys to directly encrypt and decrypt short size data;
 * Use public and private keys to encrypt and decrypt big size data, by 
 randomly generated secret key for the internal symmetric encryption.
-- By using openssl_seal() / openssl_open functions (less secure)
-- By using mcrypt_crypt / mcrypt_decrypt functions (more secure)
+    - By using openssl_seal() / openssl_open functions (less secure)
+    - By using mcrypt_crypt / mcrypt_decrypt functions (more secure)
 * Get encrypted data in three posibble encodings
-- RAW - encrypted data is not changed
-- BASE64 - (default)
-- HEX - hex representation of encrypted data bytes
+    - RAW - encrypted data is not changed
+    - BASE64 - (default)
+    - HEX - hex representation of encrypted data bytes
 
 Installation
 ------------
