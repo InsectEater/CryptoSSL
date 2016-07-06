@@ -8,7 +8,7 @@ namespace InsectEater;
  * is SSL encrypted..
  */
 
- class CryptoSSL
+class CryptoSSL
 {
     const RAW   = 5;
     const BASE64= 6;
@@ -23,6 +23,11 @@ namespace InsectEater;
  * var String Holds the result from last decryption operation.
  */
     public $Decrypted;
+
+/**
+ * var String Holds the key generated when encrypting big size data.
+ */
+    public $SealingKey;
 
 /**
  * var Resource Holds the loaded public key, used for crypting operations by the class.
@@ -62,7 +67,7 @@ namespace InsectEater;
         if (is_readable($PublicKey)) $PublicKey = file_get_contents($PublicKey);
         $this->PublicKey = openssl_pkey_get_public($PublicKey);
         if ($this->PrivateKey === false)
-            throw new exception('Can not load the public key.');
+            throw new \exception('Can not load the public key.');
     }
 /**
  * Set the private key to be used for further crypting operations. Can be a path
@@ -77,7 +82,7 @@ namespace InsectEater;
         if (is_readable($PrivateKey)) $PrivateKey = file_get_contents($PrivateKey);
         $this->PrivateKey = openssl_pkey_get_private($PrivateKey);
         if ($this->PrivateKey === false)
-            throw new exception('Can not load the private key.');
+            throw new \exception('Can not load the private key.');
     }
 
     /**
@@ -93,6 +98,8 @@ namespace InsectEater;
  */
     public function publicEncrypt($Data, $EncodeType=self::BASE64)
     {
+        if (empty($this->PublicKey))
+            throw new \exception('Missing public key.');
         openssl_public_encrypt ($Data , $this->Encrypted ,$this->PublicKey);
         $this->postEncode($this->Encrypted , $EncodeType);
         return $this->Encrypted;
@@ -111,6 +118,8 @@ namespace InsectEater;
  */
     public function privateEncrypt($Data, $EncodeType=self::BASE64)
     {
+        if (empty($this->PrivateKey))
+            throw new \exception('Missing private key.');
         openssl_private_encrypt ($Data , $this->Encrypted ,$this->PrivateKey);
         $this->postEncode($this->Encrypted , $EncodeType);
         return $this->Encrypted;
@@ -129,8 +138,10 @@ namespace InsectEater;
  */
     public function publicDecrypt($Data, $EncodeType=self::BASE64)
     {
+        if (empty($this->PublicKey))
+            throw new \exception('Missing public key.');
         $this->preDecode($Data , $EncodeType);
-        openssl_private_decrypt ($Data, $this->Decrypted ,$this->PrivateKey);
+        openssl_private_decrypt ($Data, $this->Decrypted ,$this->PublicKey);
         return $this->Decrypted;
     }
 
@@ -148,13 +159,15 @@ namespace InsectEater;
  */
     public function privateDecrypt($Data, $EncodeType=self::BASE64)
     {
+        if (empty($this->PrivateKey))
+            throw new \exception('Missing private key.');
         $this->preDecode($Data , $EncodeType);
         openssl_private_decrypt ($Data, $this->Decrypted ,$this->PrivateKey);
         return $this->Decrypted;
     }
 
-/*
- * Encrypts $Data with randomly generated secret key. Then encrypts the key with the
+/**
+ * Encrypts $Data with randomly generated key. Then encrypts the key with the
  * public key. The encrypted secret key is storedin the $SealingKey class property.
  * The result of the $Data encryption is stored in the $Encrypted class property.
  *
@@ -166,9 +179,12 @@ namespace InsectEater;
  * @param String $Method What cypher method to use to encode the Data. Only modes which do not
  * require initialization vectors are supported (openssl_seal function limitation).
  * Default is to RC4, but you can use for example AES-256-ECB.
+ * @return $String Encrypted data.
  */
     public function seal($Data, $EncodeType = null, $Method = 'RC4')
     {
+        if (empty($this->PublicKey))
+            throw new \exception('Missing public key.');
         if (empty($EncodeType)) $EncodeType = self::BASE64;
         $AvailableMethods = openssl_get_cipher_methods(true);
         if (!in_array($Method, $AvailableMethods)) $Method = 'RC4';
@@ -177,7 +193,7 @@ namespace InsectEater;
         $this->postEncode($this->SealingKey , $EncodeType);
         $this->postEncode($this->Encrypted , $EncodeType);
     }
-/*
+/**
  * Decrypts $Data supplied secret key and private key. The result from decryption is 
  * stored in $this->Decrypted property and returned.
  * 
@@ -190,13 +206,35 @@ namespace InsectEater;
  * @param String $Method What cypher method to use to encode the Data. Only modes which do not
  * require initialization vectors are supported (openssl_seal function limitation).
  * Default is to RC4, but you can use for example AES-256-ECB.
+ * return String Decrypted data.
  */
     public function open($Data, $SealingKey, $EncodeType = null, $Method = 'RC4') {
+        if (empty($this->PrivateKey))
+            throw new \exception('Missing private key.');
         if (empty($EncodeType)) $EncodeType = self::BASE64;
         $this->preDecode($SealingKey, $EncodeType);
         $this->preDecode($Data, $EncodeType);
         openssl_open($Data, $this->Decrypted, $SealingKey, $this->PrivateKey, $Method);
         return $this->Decrypted;
+    }
+/**
+ * Clear sensitive data from class variables.
+ * 
+ * @param boolean $ClearKeys If true, will clear the data for public and private keys.
+ * default is to false;
+ * @return void
+ */
+    public function clear($ClearKeys = false)
+    {
+        $this->Encrypted = null;
+        $this->Decrypted = null;
+        $this->SealingKey = null;
+        if ($ClearKeys) {
+            openssl_free_key($this->PublicKey);
+            openssl_free_key($this->PrivateKey);
+            $this->PublicKey = null;
+            $this->PrivateKey = null;
+        }
     }
 
 /**
@@ -223,5 +261,4 @@ namespace InsectEater;
         else if ($EncodeType === self::HEX)
             $Data = hex2bin($Data);
     }
-
 }
