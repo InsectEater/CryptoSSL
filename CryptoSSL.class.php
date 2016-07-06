@@ -5,15 +5,12 @@ namespace InsectEater;
  *
  * You can also encrypt or decrypt (seal or open) long texts using private and public keys. In this
  * scenario symmetric encyption with random generated key is used, and then the key itself
- * is SSL encrypted..
+ * is SSL encrypted.
+ * @version 1.0
  */
 
 class CryptoSSL
 {
-    const RAW   = 5;
-    const BASE64= 6;
-    const HEX   = 7;
-
 /**
  * var String Holds the result from last encryption operation.
  */
@@ -157,14 +154,15 @@ class CryptoSSL
     }
 
 /**
- * Encrypts $PlainData with randomly generated key. Then encrypts the key with the
- * public key. The encrypted secret key is storedin the $SealingKey class property.
- * The result of the $Data encryption is stored in the $Encrypted class property.
- * This is implementation of openssl_seal function;
+ * Encrypts $PlainData with randomly generated sealing key.
+ * The sealing key is crypted with public key and stored in  the $SealingKey
+ * class property. The result of the $Data encryption is stored in the
+ * $Encrypted class property. This is wrapper of openssl_seal function;
  *
  * @param String $PlainData Data to be encrypted.
- * @param String $Method What cypher method to use to encode the Data. Only modes which do not
- * require initialization vectors are supported (openssl_seal function limitation).
+ * @param String $Method What cypher method to use to crypt the$PlainData. Only modes
+ * which do not require initialization vectors are supported (openssl_seal 
+ * function limitation).
  * Default is to RC4, but you can use for example AES-256-ECB (both are unsecure.
  *
  * @return $String Encrypted data.
@@ -179,13 +177,14 @@ class CryptoSSL
         $this->SealingKey = $Key[0];
         $this->postEncode($this->SealingKey);
         $this->postEncode($this->Encrypted);
+        return $this->Encrypted;
     }
 /**
- * Decrypts $CryptedData with supplied secret key and private key. The result from
- * decryption is stored in $this->Decrypted property and returned.
+ * Decrypts $CryptedData with private key.
+ * The result from decryption is stored in $this->Decrypted property and returned.
  * 
  * @param String $CryptedData Data to be decrypted.
- * @param String SealingKe The key to be used on the encrypted $Data.
+ * @param String $SealingKey The key to be used on the encrypted $Data.
  * @param String $Method What cypher method to use to encode the Data. Only modes which do not
  * require initialization vectors are supported (openssl_seal function limitation).
  * Default is to RC4, but you can use for example AES-256-ECB (both are unsecure).
@@ -201,7 +200,22 @@ class CryptoSSL
         return $this->Decrypted;
     }
 
-    public function mcrypt_seal($PlainData, $Method = MCRYPT_RIJNDAEL_256)
+/**
+ * Encrypts $PlainData with randomly generated sealing key.
+ * The sealing key is crypted with public key and stored in  the $SealingKey
+ * class property. The result of the $Data encryption is stored in the
+ * $Encrypted class property. Here is used more secure mcrypt_encrypt function
+ * with ciphers put in cfb mode. The initialization vector is applied
+ * at the beginig of the encrypted data.
+ *
+ * @param String $PlainData Data to be encrypted.
+ * @param String $Method What cypher method to use to encode the $PlainData. Must be
+ * some of the MCRYPT_ciphername, supported by mcrypt, which can be put in cfb mode.
+ * Default is to MCRYPT_RIJNDAEL_256 (Other name of AES-256).
+ *
+ * @return $String Encrypted data.
+ */
+    public function mcryptSeal($PlainData, $Method = MCRYPT_RIJNDAEL_256)
     {
         if (empty($this->PublicKey))
             throw new \exception('Missing public key.');
@@ -209,11 +223,38 @@ class CryptoSSL
         $IvSize = mcrypt_enc_get_iv_size($Mc);
         $Iv = openssl_random_pseudo_bytes($IvSize);
         $KeySize = mcrypt_enc_get_key_size($Mc);
+        mcrypt_module_close($Mc);
         $this->SealingKey = openssl_random_pseudo_bytes($KeySize);
         $this->Encrypted = $Iv.mcrypt_encrypt ($Method, $this->SealingKey , $PlainData , 'cfb', $Iv);
         $this->postEncode($this->SealingKey);
         $this->postEncode($this->Encrypted);
         return $this->Encrypted;
+    }
+/**
+ * Decrypts $CryptedData with private key.
+ * The result from decryption is stored in $this->Decrypted property and returned.
+ * 
+ * @param String $CryptedData Data to be decrypted.
+ * @param String $SealingKey The key to be used on the encrypted $Data.
+ * @param String $Method What cypher method to use to decode the $EncryptedData. Must be
+ * some of the MCRYPT_ciphername, supported by mcrypt, which can be put in cfb mode.
+ * Default is to MCRYPT_RIJNDAEL_256 (Other name of AES-256).
+ *
+ * return String Decrypted data.
+ */
+    public function mcryptOpen($EncryptedData, $Key, $Method = MCRYPT_RIJNDAEL_256)
+    {
+        if (empty($this->PrivateKey))
+            throw new \exception('Missing private key.');
+        $Mc =mcrypt_module_open ($Method, null, 'cfb', null);
+        $IvSize = mcrypt_enc_get_iv_size($Mc);
+        mcrypt_module_close($Mc);
+        $this->preDecode($EncryptedData);
+        $this->preDecode($Key);
+        $Iv = substr($EncryptedData, 0, $IvSize);
+        $EncryptedData = substr($EncryptedData, $IvSize);
+        $this->Decrypted = mcrypt_decrypt ($Method, $Key , $EncryptedData , 'cfb', $Iv);
+        return $this->Decrypted;
     }
 
 /**
@@ -231,7 +272,7 @@ class CryptoSSL
 public function setEncoding($EncodeType)
     {   
         $EncodeType = strtoupper($EncodeType);
-        if (!in_array('BASE64', 'RAW', 'HEX'))
+        if ( !in_array($EncodeType , array('BASE64', 'RAW', 'HEX')) )
             $EncodeType = 'BASE64';
         $this->EncodeType = $EncodeType;
     }
@@ -259,7 +300,7 @@ public function setEncoding($EncodeType)
 
     
 /**
- * Encode Data which was previosly decrypted.
+ * Encode Data after encryption
  *
  * return void
  */
@@ -271,7 +312,7 @@ public function setEncoding($EncodeType)
         }
     }
 /**
- * Decode Data before decrypt it
+ * Decode Data before encryption
  *
  * return void
  */
