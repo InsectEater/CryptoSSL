@@ -14,8 +14,8 @@ Current capabilities of CryptoSSL
 * Use public and private keys to directly encrypt and decrypt short size data;
 * Use public and private keys to encrypt and decrypt big size data, by 
 randomly generated secret key for the internal symmetric encryption.
-    - By using openssl_seal() / openssl_open functions (less secure)
-    - By using mcrypt_crypt / mcrypt_decrypt functions (more secure)
+    - By using openssl_seal() / openssl_open functions
+    - By using mcrypt_crypt / mcrypt_decrypt functions (Deprecated)
 * Get encrypted data in three posibble encodings
     - RAW - encrypted data is not changed
     - BASE64 - (default)
@@ -33,7 +33,7 @@ Usage
 ```PHP
 <?php
 $c = new \InsectEater\CryptoSSL('public.pem', 'private.pem');
-$Data = 'My secret key. The kitten is eating.';
+$Data = 'My short length secret key.';
 
 echo $c->publicEncrypt($Data);
 echo $c->privateDecrypt($c->Encrypted);
