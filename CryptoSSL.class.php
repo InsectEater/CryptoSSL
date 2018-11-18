@@ -132,7 +132,7 @@ class CryptoSSL
         if (empty($this->PublicKey))
             throw new \exception('Missing public key.');
         $this->preDecode($Data);
-        openssl_private_decrypt ($Data, $this->Decrypted ,$this->PublicKey);
+        openssl_public_decrypt ($Data, $this->Decrypted ,$this->PublicKey);
         return $this->Decrypted;
     }
 
@@ -214,6 +214,7 @@ class CryptoSSL
  * Default is to MCRYPT_RIJNDAEL_256 (Other name of AES-256).
  *
  * @return $String Encrypted data.
+ * @deprecated
  */
     public function mcryptSeal($PlainData, $Method = MCRYPT_RIJNDAEL_256)
     {
@@ -241,6 +242,7 @@ class CryptoSSL
  * Default is to MCRYPT_RIJNDAEL_256 (Other name of AES-256).
  *
  * return String Decrypted data.
+ * @deprecated
  */
     public function mcryptOpen($EncryptedData, $Key, $Method = MCRYPT_RIJNDAEL_256)
     {
